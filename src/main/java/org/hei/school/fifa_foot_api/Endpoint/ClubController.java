@@ -1,6 +1,7 @@
 package org.hei.school.fifa_foot_api.Endpoint;
 
 import org.hei.school.fifa_foot_api.model.Club;
+import org.hei.school.fifa_foot_api.model.Player;
 import org.hei.school.fifa_foot_api.model.SimplePlayer;
 import org.hei.school.fifa_foot_api.service.ClubService;
 import org.hei.school.fifa_foot_api.service.PlayerService;
@@ -39,5 +40,19 @@ public class ClubController {
         }
         List<SimplePlayer> players = clubService.findPlayersOfClub(id);
         return ResponseEntity.ok(players);
+    }
+
+    @PutMapping("/{id}/players")
+    public ResponseEntity<?> replacePlayers(
+            @PathVariable("id") UUID clubId,
+            @RequestBody List<Player> players) {
+        try {
+            List<Player> updated = clubService.replacePlayersOfClub(clubId, players);
+            return ResponseEntity.ok(updated);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Unexpected error.");
+        }
     }
 }
