@@ -143,4 +143,57 @@ public class PlayerDAOImplementation implements PlayerDAO{
         }
         return null;
     }
+
+    @Override
+    public Player findById(UUID playerId) {
+        String sql = """
+        SELECT id, name, number, position, nationality, age, club_id
+        FROM players
+        WHERE id = ?
+    """;
+
+        try (Connection conn = dataSource.getConnection()){
+             PreparedStatement stmt = conn.prepareStatement(sql);
+
+            stmt.setObject(1, playerId);
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                Player player = new Player();
+                player.setId(UUID.fromString(rs.getString("id")));
+                player.setName(rs.getString("name"));
+                player.setNumber(rs.getInt("number"));
+                player.setPosition(PlayerPosition.valueOf(rs.getString("position")));
+                player.setNationality(rs.getString("nationality"));
+                player.setAge(rs.getInt("age"));
+
+                String clubIdStr = rs.getString("club_id");
+                if (clubIdStr != null) {
+                    Club club = new Club();
+                    club.setId(UUID.fromString(clubIdStr));
+                    player.setClub(club);
+                }
+
+                return player;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+        return null;
+    }
+
+    @Override
+    public void assignPlayerToClub(UUID playerId, UUID clubId) {
+        String sql = "UPDATE players SET club_id = ? WHERE id = ?";
+        try (Connection conn = dataSource.getConnection()){
+             PreparedStatement stmt = conn.prepareStatement(sql);
+            stmt.setObject(1, clubId);
+            stmt.setObject(2, playerId);
+            stmt.executeUpdate();
+            System.out.println("✅ Update player successfully");
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }
