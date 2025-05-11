@@ -13,4 +13,5 @@ public interface ClubDAO {
     List<SimplePlayer> findPlayersOfClub(UUID clubId);
     Club findById(UUID id);
     List<Player> replacePlayersOfClub(UUID clubId, List<Player> players);
+    List<SimplePlayer> addOrAssignPlayersToClub(UUID clubId, List<SimplePlayer> players);
 }
