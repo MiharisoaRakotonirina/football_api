@@ -1,12 +1,14 @@
 package org.hei.school.fifa_foot_api.model;
 
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.UUID;
 
 @Getter
 @Setter
+@NoArgsConstructor
 public class Player {
     private UUID id;
     private String name;
