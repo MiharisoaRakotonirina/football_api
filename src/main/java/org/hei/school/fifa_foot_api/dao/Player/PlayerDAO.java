@@ -10,4 +10,6 @@ public interface PlayerDAO {
     List<Player> getAll();
     List<Player> saveOrUpdatePlayers(List<Player> players);
     PlayerStatistics getStatisticsByPlayerIdAndSeason(UUID playerId, int seasonYear);
+    Player findById(UUID playerId);
+    void assignPlayerToClub(UUID playerId, UUID clubId);
 }
