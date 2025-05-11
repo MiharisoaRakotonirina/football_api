@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 
 @Service
@@ -37,5 +38,13 @@ public class ClubService {
 
     public List<Player> replacePlayersOfClub(UUID clubId, List<Player> players) {
         return implementation.replacePlayersOfClub(clubId, players);
+    }
+
+    public List<SimplePlayer> assignPlayersToClub(UUID clubId, List<SimplePlayer> players) {
+        Club club = implementation.findById(clubId);
+        if (club == null) {
+            throw new NoSuchElementException("Club not found.");
+        }
+        return implementation.addOrAssignPlayersToClub(clubId, players);
     }
 }
