@@ -209,4 +209,122 @@ public class ClubDAOImplementation implements ClubDAO{
         }
     }
 
+    @Override
+    public List<SimplePlayer> addOrAssignPlayersToClub(UUID clubId, List<SimplePlayer> simplePlayers) {
+        List<SimplePlayer> addedPlayers = new ArrayList<>();
+
+        try (Connection conn = dataSource.getConnection()) {
+            conn.setAutoCommit(false);
+
+            for (SimplePlayer sp : simplePlayers) {
+                UUID playerId = sp.getId();
+
+                if (playerId != null) {
+                    String checkSql = "SELECT club_id FROM players WHERE id = ?";
+                    try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
+                        checkStmt.setObject(1, playerId);
+                        ResultSet rs = checkStmt.executeQuery();
+
+                        if (rs.next()) {
+                            UUID existingClubId = (UUID) rs.getObject("club_id");
+
+                            if (existingClubId != null && !existingClubId.equals(clubId)) {
+                                conn.rollback();
+                                throw new IllegalStateException("Player " + playerId + " is already attached to another club.");
+                            }
+
+                            if (existingClubId == null) {
+                                // Assign to a new club
+                                String updateSql = "UPDATE players SET club_id = ? WHERE id = ?";
+                                try (PreparedStatement updateStmt = conn.prepareStatement(updateSql)) {
+                                    updateStmt.setObject(1, clubId);
+                                    updateStmt.setObject(2, playerId);
+                                    updateStmt.executeUpdate();
+                                }
+                            }
+
+                            addedPlayers.add(sp);
+                            continue;
+                        } else {
+                            // Provided Player with ID doesn't exist -> we create
+                            String insertSql = """
+                            INSERT INTO players (id, name, number, position, nationality, age, club_id)
+                            VALUES (?, ?, ?, ?::player_position, ?, ?, ?)
+                        """;
+                            try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
+                                insertStmt.setObject(1, playerId);
+                                insertStmt.setString(2, sp.getName());
+                                insertStmt.setInt(3, sp.getNumber());
+                                insertStmt.setString(4, sp.getPosition().name());
+                                insertStmt.setString(5, sp.getNationality());
+                                insertStmt.setInt(6, sp.getAge());
+                                insertStmt.setObject(7, clubId);
+                                insertStmt.executeUpdate();
+                            }
+
+                            addedPlayers.add(sp);
+                            continue;
+                        }
+                    }
+
+                } else {
+                    // No ID provided -> search by name + number
+                    UUID existingPlayerId = null;
+                    UUID existingClubId = null;
+
+                    String findSql = "SELECT id, club_id FROM players WHERE name = ? AND number = ?";
+                    try (PreparedStatement findStmt = conn.prepareStatement(findSql)) {
+                        findStmt.setString(1, sp.getName());
+                        findStmt.setInt(2, sp.getNumber());
+                        ResultSet rs = findStmt.executeQuery();
+                        if (rs.next()) {
+                            existingPlayerId = (UUID) rs.getObject("id");
+                            existingClubId = (UUID) rs.getObject("club_id");
+
+                            if (existingClubId != null && !existingClubId.equals(clubId)) {
+                                conn.rollback();
+                                throw new IllegalStateException("Player " + existingPlayerId + " is already attached to another club.");
+                            }
+                        }
+                    }
+
+                    if (existingPlayerId == null) {
+                        existingPlayerId = UUID.randomUUID();
+                        String insertSql = """
+                        INSERT INTO players (id, name, number, position, nationality, age, club_id)
+                        VALUES (?, ?, ?, ?::player_position, ?, ?, ?)
+                    """;
+                        try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
+                            insertStmt.setObject(1, existingPlayerId);
+                            insertStmt.setString(2, sp.getName());
+                            insertStmt.setInt(3, sp.getNumber());
+                            insertStmt.setString(4, sp.getPosition().name());
+                            insertStmt.setString(5, sp.getNationality());
+                            insertStmt.setInt(6, sp.getAge());
+                            insertStmt.setObject(7, clubId);
+                            insertStmt.executeUpdate();
+                        }
+                    } else {
+                        // Player exists but no club -> assign to the club
+                        String updateSql = "UPDATE players SET club_id = ? WHERE id = ?";
+                        try (PreparedStatement updateStmt = conn.prepareStatement(updateSql)) {
+                            updateStmt.setObject(1, clubId);
+                            updateStmt.setObject(2, existingPlayerId);
+                            updateStmt.executeUpdate();
+                        }
+                    }
+
+                    addedPlayers.add(new SimplePlayer(existingPlayerId, sp.getName(), sp.getNumber(), sp.getPosition(), sp.getNationality(), sp.getAge()));
+                }
+            }
+
+            conn.commit();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException("SQL Error: " + e.getMessage());
+        }
+
+        return findPlayersOfClub(clubId);
+    }
+
 }
