@@ -11,6 +11,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 
 @RestController
@@ -53,6 +55,26 @@ public class ClubController {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Unexpected error.");
+        }
+    }
+
+    @PostMapping("/{id}/players")
+    public ResponseEntity<?> assignPlayers(
+            @PathVariable("id") UUID clubId,
+            @RequestBody List<SimplePlayer> players
+    ) {
+        try {
+            List<SimplePlayer> updatedPlayers = clubService.assignPlayersToClub(clubId, players);
+            return ResponseEntity.ok(updatedPlayers);
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Club not found."));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Unexpected error."));
         }
     }
 }
